@@ -1,10 +1,13 @@
-package org.example.tourplanner.presentation;
+package at.fhtw.tourplanner.controller;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "${app.frontend.url}")
 public class DbTestController {
 
     private final JdbcTemplate jdbcTemplate;
@@ -14,8 +17,10 @@ public class DbTestController {
     }
 
     @GetMapping("/db-test")
-    public String testConnection() {
-        jdbcTemplate.execute("SELECT 1");
-        return "Database connection successful!";
+    public Map<String, String> testConnection() {
+        jdbcTemplate.execute("SELECT 1;");
+        //return "Database connection successful!";
+        return Map.of("message", "Database connection successful!");
     }
+
 }

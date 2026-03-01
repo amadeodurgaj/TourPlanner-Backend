@@ -1,4 +1,4 @@
-package org.example.tourplanner;
+package at.fhtw.tourplanner;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

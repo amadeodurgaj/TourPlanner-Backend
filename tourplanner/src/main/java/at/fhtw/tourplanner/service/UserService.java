@@ -41,17 +41,6 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public String loginUser(UserLoginRequestDTO dto) {
-        boolean UserExists = userRepository.existsByUsername(dto.username());
-        if (!UserExists) {
-            return null;
-        }
-        User user = userRepository.findByUsername(dto.username());
-        System.out.println("User found: " + user);
-        if (passwordEncoder.matches(dto.password(), user.getPasswordHash())) {
-            return jwtUtil.generateToken(user.getUsername());
-        }
-        return null;
-    }
+
 
 }

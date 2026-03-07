@@ -34,16 +34,7 @@ public class UserController {
         return ApiResponseUtil.success(response, "User registered successfully");
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponseUtil.ApiResponse<UserLoginResponseDTO>> loginUser(@Valid @RequestBody UserLoginRequestDTO dto) {
-        String token = userService.loginUser(dto);
-        if(token == null) {
-            return ApiResponseUtil.error("Invalid username or password", HttpStatus.UNAUTHORIZED);
-        }
-        UserLoginResponseDTO response = new UserLoginResponseDTO(dto.username(), "example@example.com", java.util.UUID.randomUUID());
 
-        return ApiResponseUtil.success(response, "User logged in successfully");
-    }
 }
 
 

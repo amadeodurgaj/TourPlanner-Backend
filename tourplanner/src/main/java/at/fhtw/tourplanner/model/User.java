@@ -1,23 +1,26 @@
 package at.fhtw.tourplanner.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.Date;
 
 @Entity
 @Table(name = "users")
+@NoArgsConstructor
+@AllArgsConstructor
 @Getter
 @Setter
 public class User{
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
         private UUID id;
+        @Column(unique = true)
         private String username;
-        private Date registrationDate;
+        private LocalDateTime registrationDate;
         private String passwordHash;
+        @Column(unique = true)
         private String email;
 
 }

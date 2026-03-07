@@ -1,4 +1,7 @@
 package at.fhtw.tourplanner.DTO;
 
-public record UserRegisterRequestDTO (String username, String email,String password) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
+
+public record UserRegisterRequestDTO (@NotBlank String username, @NotBlank @Email String email, @NotBlank String password,@NotBlank String passwordConfirmation) {
 }

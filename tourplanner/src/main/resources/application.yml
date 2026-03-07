@@ -1,15 +1,14 @@
 server:
   port: 8080
 
-app:
-  frontend:
-    url: http://localhost:3000
-
 spring:
+  application:
+    name: tourplanner
   datasource:
     url: jdbc:postgresql://localhost:5432/tourplanner
     username: touruser
     password: tourpassword
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,3 +16,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  frontend:
+    url: http://localhost:3000
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    expiration: 10800

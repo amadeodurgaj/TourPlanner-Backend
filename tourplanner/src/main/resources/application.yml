@@ -1,6 +1,15 @@
 server:
   port: 8080
 
+
+logging:
+  level:
+    root: WARN
+    at.fhtw.tourplanner: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+    org.hibernate.SQL: OFF
+
 spring:
   application:
     name: tourplanner
@@ -12,7 +21,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: true # change to false if you don't want to see SQL statements in the logs
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -20,6 +29,7 @@ spring:
 app:
   frontend:
     url: http://localhost:3000
+
   jwt:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     expiration: 3600000 # 1 hour

@@ -1,6 +1,6 @@
 package at.fhtw.tourplanner.service;
 
-import at.fhtw.tourplanner.model.User;
+import at.fhtw.tourplanner.entity.UserEntity;
 import at.fhtw.tourplanner.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,7 +18,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username);
+        UserEntity user = userRepository.findByUsername(username);
         if (user == null) {
             throw new UsernameNotFoundException("User not found with username: " + username);
         }

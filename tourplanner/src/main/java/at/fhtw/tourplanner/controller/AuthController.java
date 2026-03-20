@@ -16,7 +16,7 @@ import at.fhtw.tourplanner.DTO.CurrentUserDTO;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "${app.frontend.url}")
+//@CrossOrigin(origins = "${app.frontend.url}")
 public class AuthController {
     @Autowired
     AuthService authService;

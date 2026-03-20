@@ -16,7 +16,7 @@ import at.fhtw.tourplanner.util.ApiResponseUtil;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "${app.frontend.url}")
+//@CrossOrigin(origins = "${app.frontend.url}")
 public class UserController {
 
     @Autowired UserService userService;
@@ -36,6 +36,4 @@ public class UserController {
 
 
 }
-
-
 

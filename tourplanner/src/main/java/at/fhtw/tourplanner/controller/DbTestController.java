@@ -7,7 +7,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "${app.frontend.url}")
 public class DbTestController {
 
     private final JdbcTemplate jdbcTemplate;

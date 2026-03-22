@@ -2,8 +2,11 @@ package at.fhtw.tourplanner.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 
@@ -23,18 +26,14 @@ public class TourEntity {
     private String transportType;
     
     private String fromLocation;
-    private Double fromLatitude;
-    private Double fromLongitude;
-    
     private String toLocation;
-    private Double toLatitude;
-    private Double toLongitude;
     
     private double distance;
     private String estimatedTime;
     
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String routeInfo;
+    private Map<String, Object> routeInfo;
     
     private int childFriendliness;
     private int popularityScore;

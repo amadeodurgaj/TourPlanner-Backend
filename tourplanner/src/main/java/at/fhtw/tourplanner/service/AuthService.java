@@ -30,7 +30,7 @@ public class AuthService {
         UserEntity user = userRepository.findByUsername(dto.username());
         System.out.println("User found: " + user);
         if (passwordEncoder.matches(dto.password(), user.getPasswordHash())) {
-            return jwtUtil.generateToken(user.getUsername());
+            return jwtUtil.generateToken(user.getUsername(), user.getId());
         }
         return null;
     }

@@ -1,8 +1,15 @@
 package at.fhtw.tourplanner.config;
 
 import at.fhtw.tourplanner.service.CustomUserDetailsService;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.io.IOException;
 import java.util.List;
 
 @Configuration
@@ -50,7 +58,8 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/register", "/api/tours/**").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/register").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
@@ -75,5 +84,31 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
 
         return source;
+    }
+
+    @Bean
+    public FilterRegistrationBean<SecurityHeadersFilter> securityHeadersFilter() {
+        FilterRegistrationBean<SecurityHeadersFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new SecurityHeadersFilter());
+        registrationBean.addUrlPatterns("/*");
+        registrationBean.setOrder(1);
+        return registrationBean;
+    }
+
+    public static class SecurityHeadersFilter implements Filter {
+        @Override
+        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+                throws IOException, ServletException {
+            HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+            httpResponse.setHeader("X-Content-Type-Options", "nosniff");
+            httpResponse.setHeader("X-Frame-Options", "DENY");
+            httpResponse.setHeader("X-XSS-Protection", "1; mode=block");
+            httpResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+            httpResponse.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            httpResponse.setHeader("Pragma", "no-cache");
+
+            chain.doFilter(request, response);
+        }
     }
 }

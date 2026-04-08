@@ -4,11 +4,11 @@ services:
     container_name: tourplanner-db
     restart: always
     environment:
-      POSTGRES_DB: tourplanner
-      POSTGRES_USER: touruser
-      POSTGRES_PASSWORD: tourpassword
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

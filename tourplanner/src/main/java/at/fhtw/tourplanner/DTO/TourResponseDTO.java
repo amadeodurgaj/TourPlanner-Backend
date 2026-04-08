@@ -10,7 +10,11 @@ public record TourResponseDTO(
         String description,
         String transportType,
         String fromLocation,
+        Double fromLatitude,
+        Double fromLongitude,
         String toLocation,
+        Double toLatitude,
+        Double toLongitude,
         double distance,
         String estimatedTime,
         Map<String, Object> routeInfo,
@@ -18,5 +22,6 @@ public record TourResponseDTO(
         int popularityScore,
         UUID userId,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        String imagePath
 ) {}

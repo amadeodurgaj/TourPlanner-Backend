@@ -10,6 +10,7 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Component
@@ -25,8 +26,9 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String username) {
+    public String generateToken(String username, UUID userId) {
         Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId.toString());
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(username)
@@ -36,8 +38,18 @@ public class JwtUtil {
                 .compact();
     }
 
+    public String generateToken(String username) {
+        return generateToken(username, null);
+    }
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public UUID extractUserId(String token) {
+        String userId = extractClaim(token, claims -> claims.get("userId", String.class));
+        if (userId == null) return null;
+        return UUID.fromString(userId);
     }
 
     public Date extractExpiration(String token) {

@@ -6,6 +6,8 @@ import at.fhtw.tourplanner.entity.TourEntity;
 import at.fhtw.tourplanner.entity.UserEntity;
 import at.fhtw.tourplanner.repository.TourRepository;
 import at.fhtw.tourplanner.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,11 +20,19 @@ import java.util.stream.Collectors;
 @Service
 public class TourService {
 
+    private static final Logger log = LoggerFactory.getLogger(TourService.class);
+
     @Autowired
     private TourRepository tourRepository;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RoutingService routingService;
+
+    @Autowired
+    private ImageService imageService;
 
     public List<TourResponseDTO> getAllToursByUser(UUID userId) {
         return tourRepository.findByUserId(userId).stream()
@@ -48,6 +58,21 @@ public class TourService {
         tour.setCreatedAt(LocalDateTime.now());
         tour.setUpdatedAt(LocalDateTime.now());
 
+        if (dto.fromLatitude() != null && dto.toLatitude() != null) {
+            try {
+                RoutingService.RouteInfo route = routingService.calculateRoute(
+                        dto.fromLatitude(), dto.fromLongitude(),
+                        dto.toLatitude(), dto.toLongitude(),
+                        dto.transportType()
+                );
+                double distanceKm = route.distanceMeters() / 1000.0;
+                tour.setDistance(distanceKm);
+                tour.setEstimatedTime(formatDuration(route.durationSeconds()));
+            } catch (Exception e) {
+                log.error("Routing calculation failed for tour '{}': {}", dto.name(), e.getMessage());
+            }
+        }
+
         TourEntity saved = tourRepository.save(tour);
         return toResponseDTO(saved);
     }
@@ -55,19 +80,47 @@ public class TourService {
     public TourResponseDTO updateTour(UUID tourId, TourRequestDTO dto, UUID userId) {
         return tourRepository.findByIdAndUserId(tourId, userId)
                 .map(tour -> {
-                    updateTourFromDTO(tour, dto);
+                    boolean coordinatesChanged = !java.util.Objects.equals(tour.getFromLatitude(), dto.fromLatitude())
+                            || !java.util.Objects.equals(tour.getFromLongitude(), dto.fromLongitude())
+                            || !java.util.Objects.equals(tour.getToLatitude(), dto.toLatitude())
+                            || !java.util.Objects.equals(tour.getToLongitude(), dto.toLongitude());
+
+                    boolean transportTypeChanged = !java.util.Objects.equals(tour.getTransportType(), dto.transportType());
+
                     tour.setUpdatedAt(LocalDateTime.now());
+
+                    if ((coordinatesChanged || transportTypeChanged) && dto.fromLatitude() != null && dto.toLatitude() != null) {
+                        try {
+                            RoutingService.RouteInfo route = routingService.calculateRoute(
+                                    dto.fromLatitude(), dto.fromLongitude(),
+                                    dto.toLatitude(), dto.toLongitude(),
+                                    dto.transportType()
+                            );
+                            double distanceKm = route.distanceMeters() / 1000.0;
+                            tour.setDistance(distanceKm);
+                            tour.setEstimatedTime(formatDuration(route.durationSeconds()));
+                            log.info("Recalculated route for tour '{}': {}km, transport: {}", dto.name(), distanceKm, dto.transportType());
+                        } catch (Exception e) {
+                            log.error("Failed to recalculate route for tour '{}': {}", dto.name(), e.getMessage());
+                        }
+                    }
+
+                    updateTourFromDTO(tour, dto);
                     return toResponseDTO(tourRepository.save(tour));
                 })
                 .orElse(null);
     }
 
     public boolean deleteTour(UUID tourId, UUID userId) {
-        if (tourRepository.findByIdAndUserId(tourId, userId).isPresent()) {
-            tourRepository.deleteById(tourId);
-            return true;
-        }
-        return false;
+        return tourRepository.findByIdAndUserId(tourId, userId)
+                .map(tour -> {
+                    if (tour.getImagePath() != null) {
+                        imageService.deleteImage(tour.getImagePath());
+                    }
+                    tourRepository.deleteById(tourId);
+                    return true;
+                })
+                .orElse(false);
     }
 
     @SuppressWarnings("unchecked")
@@ -76,9 +129,12 @@ public class TourService {
         tour.setDescription(dto.description());
         tour.setTransportType(dto.transportType());
         tour.setFromLocation(dto.fromLocation());
+        tour.setFromLatitude(dto.fromLatitude());
+        tour.setFromLongitude(dto.fromLongitude());
         tour.setToLocation(dto.toLocation());
-        tour.setDistance(dto.distance());
-        tour.setEstimatedTime(dto.estimatedTime());
+        tour.setToLatitude(dto.toLatitude());
+        tour.setToLongitude(dto.toLongitude());
+        tour.setImagePath(dto.imagePath());
         Object routeInfoObj = dto.routeInfo();
         if (routeInfoObj == null) {
             tour.setRouteInfo(null);
@@ -100,13 +156,21 @@ public class TourService {
     }
 
     private TourResponseDTO toResponseDTO(TourEntity tour) {
+        String imagePath = tour.getImagePath();
+        if (imagePath != null && !imagePath.startsWith("/")) {
+            imagePath = "/" + imagePath;
+        }
         return new TourResponseDTO(
                 tour.getId(),
                 tour.getName(),
                 tour.getDescription(),
                 tour.getTransportType(),
                 tour.getFromLocation(),
+                tour.getFromLatitude(),
+                tour.getFromLongitude(),
                 tour.getToLocation(),
+                tour.getToLatitude(),
+                tour.getToLongitude(),
                 tour.getDistance(),
                 tour.getEstimatedTime(),
                 tour.getRouteInfo(),
@@ -114,7 +178,21 @@ public class TourService {
                 tour.getPopularityScore(),
                 tour.getUser().getId(),
                 tour.getCreatedAt(),
-                tour.getUpdatedAt()
+                tour.getUpdatedAt(),
+                imagePath
         );
+    }
+
+    private String formatDuration(long seconds) {
+        if (seconds <= 0) {
+            return "0 min";
+        }
+        long hours = seconds / 3600;
+        long minutes = (seconds % 3600) / 60;
+        if (hours > 0) {
+            return String.format("%d h %d min", hours, minutes);
+        } else {
+            return String.format("%d min", minutes);
+        }
     }
 }

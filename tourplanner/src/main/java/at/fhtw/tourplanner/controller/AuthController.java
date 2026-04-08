@@ -1,25 +1,27 @@
 package at.fhtw.tourplanner.controller;
 
+import at.fhtw.tourplanner.DTO.CurrentUserDTO;
 import at.fhtw.tourplanner.DTO.UserLoginRequestDTO;
-import at.fhtw.tourplanner.DTO.UserLoginResponseDTO;
 import at.fhtw.tourplanner.service.AuthService;
 import at.fhtw.tourplanner.util.ApiResponseUtil;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import at.fhtw.tourplanner.DTO.CurrentUserDTO;
-
 
 @RestController
 @RequestMapping("/api/auth")
-//@CrossOrigin(origins = "${app.frontend.url}")
 public class AuthController {
+    
     @Autowired
     AuthService authService;
+
+    @Value("${app.environment.production:false}")
+    private boolean isProduction;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody UserLoginRequestDTO dto) {
@@ -31,23 +33,24 @@ public class AuthController {
 
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
                 .httpOnly(true)
-                .secure(false) // true in production (HTTPS)
+                .secure(isProduction)
                 .path("/")
-                .maxAge(60 * 60) // 1 hour
+                .maxAge(60 * 60)
                 .sameSite("Strict")
                 .build();
 
+        CurrentUserDTO userInfo = authService.getCurrentUser(token);
+
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponseUtil.success(token, "Login successful"));
+                .body(ApiResponseUtil.success(userInfo, "Login successful"));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
-
         ResponseCookie cookie = ResponseCookie.from("jwt", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(isProduction)
                 .path("/")
                 .maxAge(0)
                 .sameSite("Strict")

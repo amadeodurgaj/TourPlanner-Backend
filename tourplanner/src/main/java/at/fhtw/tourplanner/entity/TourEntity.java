@@ -26,7 +26,11 @@ public class TourEntity {
     private String transportType;
     
     private String fromLocation;
+    private Double fromLatitude;
+    private Double fromLongitude;
     private String toLocation;
+    private Double toLatitude;
+    private Double toLongitude;
     
     private double distance;
     private String estimatedTime;
@@ -37,6 +41,9 @@ public class TourEntity {
     
     private int childFriendliness;
     private int popularityScore;
+    
+    @Column(columnDefinition = "TEXT")
+    private String imagePath;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

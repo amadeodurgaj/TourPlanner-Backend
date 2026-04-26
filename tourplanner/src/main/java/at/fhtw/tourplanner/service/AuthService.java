@@ -2,16 +2,20 @@ package at.fhtw.tourplanner.service;
 
 import at.fhtw.tourplanner.DTO.CurrentUserDTO;
 import at.fhtw.tourplanner.DTO.UserLoginRequestDTO;
-import at.fhtw.tourplanner.DTO.UserLoginResponseDTO;
 import at.fhtw.tourplanner.entity.UserEntity;
 import at.fhtw.tourplanner.repository.UserRepository;
 import at.fhtw.tourplanner.util.JwtUtil;
+import at.fhtw.tourplanner.util.LoggerUtil;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerUtil.getLogger(AuthService.class);
+
     @Autowired
     UserRepository userRepository;
 
@@ -28,7 +32,7 @@ public class AuthService {
             return null;
         }
         UserEntity user = userRepository.findByUsername(dto.username());
-        System.out.println("User found: " + user);
+        log.debug("User found for username: {}", dto.username());
         if (passwordEncoder.matches(dto.password(), user.getPasswordHash())) {
             return jwtUtil.generateToken(user.getUsername(), user.getId());
         }

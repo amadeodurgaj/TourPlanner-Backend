@@ -4,7 +4,7 @@ server:
 logging:
   level:
     root: WARN
-    at.fhtw.tourplanner: INFO
+    at.fhtw.tourplanner: DEBUG
     org.springframework: WARN
     org.hibernate: WARN
     org.hibernate.SQL: OFF

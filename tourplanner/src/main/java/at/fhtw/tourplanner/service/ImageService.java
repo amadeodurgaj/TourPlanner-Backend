@@ -1,7 +1,7 @@
 package at.fhtw.tourplanner.service;
 
+import at.fhtw.tourplanner.util.LoggerUtil;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,7 +17,7 @@ import java.util.UUID;
 @Service
 public class ImageService {
     
-    private static final Logger log = LoggerFactory.getLogger(ImageService.class);
+    private static final Logger log = LoggerUtil.getLogger(ImageService.class);
     
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "image/jpeg",

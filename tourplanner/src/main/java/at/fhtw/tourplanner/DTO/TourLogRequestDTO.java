@@ -17,11 +17,14 @@ public record TourLogRequestDTO(
     TourLogEntity.Difficulty difficulty,
 
     @PositiveOrZero(message = "Total distance must be >= 0")
+    @NotNull(message = "Total distance is required")
     Double totalDistance,
 
     @PositiveOrZero(message = "Total time must be >= 0")
+    @NotNull(message = "Total time is required")
     Integer totalTime,
 
+    @NotNull(message = "Rating is required")
     @Min(value = 1, message = "Rating must be at least 1")
     @Max(value = 5, message = "Rating must be at most 5")
     Integer rating

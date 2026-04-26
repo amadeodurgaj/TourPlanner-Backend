@@ -2,6 +2,7 @@ package at.fhtw.tourplanner.util;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,8 @@ import java.util.function.Function;
 
 @Component
 public class JwtUtil {
+
+    private static final Logger log = LoggerUtil.getLogger(JwtUtil.class);
 
     @Value("${app.jwt.secret}")
     private String secret;
@@ -81,15 +84,15 @@ public class JwtUtil {
                     .parseClaimsJws(token);
             return !isTokenExpired(token);
         } catch (SignatureException e) {
-            System.err.println("Invalid JWT signature: " + e.getMessage());
+            log.warn("Invalid JWT signature: {}", e.getMessage());
         } catch (MalformedJwtException e) {
-            System.err.println("Invalid JWT token: " + e.getMessage());
+            log.warn("Invalid JWT token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
-            System.err.println("JWT token is expired: " + e.getMessage());
+            log.warn("JWT token is expired: {}", e.getMessage());
         } catch (UnsupportedJwtException e) {
-            System.err.println("JWT token is unsupported: " + e.getMessage());
+            log.warn("JWT token is unsupported: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
-            System.err.println("JWT claims string is empty: " + e.getMessage());
+            log.warn("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
     }

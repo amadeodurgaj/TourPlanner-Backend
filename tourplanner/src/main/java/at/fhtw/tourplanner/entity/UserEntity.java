@@ -1,6 +1,11 @@
 package at.fhtw.tourplanner.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -19,13 +24,22 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
     
-    @Column(unique = true)
+    @NotBlank
+    @Size(min = 3, max = 50)
+    @Pattern(regexp = "^[A-Za-z0-9._-]+$")
+    @Column(unique = true, nullable = false, length = 50)
     private String username;
     
+    @NotNull
     private LocalDateTime registrationDate;
+
+    @NotBlank
     private String passwordHash;
     
-    @Column(unique = true)
+    @NotBlank
+    @Email
+    @Size(max = 255)
+    @Column(unique = true, nullable = false)
     private String email;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

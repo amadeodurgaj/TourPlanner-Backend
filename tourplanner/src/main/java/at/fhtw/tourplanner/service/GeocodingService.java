@@ -1,6 +1,8 @@
 package at.fhtw.tourplanner.service;
 
 import at.fhtw.tourplanner.DTO.LocationSearchResultDTO;
+import at.fhtw.tourplanner.util.LoggerUtil;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -11,6 +13,8 @@ import java.util.Map;
 
 @Service
 public class GeocodingService {
+
+    private static final Logger log = LoggerUtil.getLogger(GeocodingService.class);
 
     @Value("${openrouteservice.api-key}")
     private String apiKey;
@@ -71,7 +75,7 @@ public class GeocodingService {
             return results;
 
         } catch (Exception e) {
-            System.err.println("Geocoding error: " + e.getMessage());
+            log.error("Geocoding error: {}", e.getMessage(), e);
             return List.of();
         }
     }

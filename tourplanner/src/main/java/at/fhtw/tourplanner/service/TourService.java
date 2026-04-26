@@ -6,8 +6,8 @@ import at.fhtw.tourplanner.entity.TourEntity;
 import at.fhtw.tourplanner.entity.UserEntity;
 import at.fhtw.tourplanner.repository.TourRepository;
 import at.fhtw.tourplanner.repository.UserRepository;
+import at.fhtw.tourplanner.util.LoggerUtil;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 public class TourService {
 
-    private static final Logger log = LoggerFactory.getLogger(TourService.class);
+    private static final Logger log = LoggerUtil.getLogger(TourService.class);
 
     @Autowired
     private TourRepository tourRepository;

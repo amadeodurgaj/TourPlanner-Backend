@@ -39,6 +39,9 @@ app:
     secret: ${JWT_SECRET:}
     expiration: ${JWT_EXPIRATION:3600000}
 
+  password-reset:
+    expiration-minutes: ${PASSWORD_RESET_EXPIRATION_MINUTES:30}
+
   environment:
     production: ${APP_PRODUCTION:false} # set to true when deploying
 

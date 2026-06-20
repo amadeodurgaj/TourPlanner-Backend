@@ -41,6 +41,12 @@ public class UserEntity {
     @Size(max = 255)
     @Column(unique = true, nullable = false)
     private String email;
+
+    @Column(name = "password_reset_token_hash", length = 64)
+    private String passwordResetTokenHash;
+
+    @Column(name = "password_reset_token_expires_at")
+    private LocalDateTime passwordResetTokenExpiresAt;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TourEntity> tours = new ArrayList<>();

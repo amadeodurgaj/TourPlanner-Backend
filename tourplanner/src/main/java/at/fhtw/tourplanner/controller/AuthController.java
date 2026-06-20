@@ -1,6 +1,9 @@
 package at.fhtw.tourplanner.controller;
 
 import at.fhtw.tourplanner.DTO.CurrentUserDTO;
+import at.fhtw.tourplanner.DTO.ForgotPasswordRequestDTO;
+import at.fhtw.tourplanner.DTO.ForgotPasswordResponseDTO;
+import at.fhtw.tourplanner.DTO.ResetPasswordRequestDTO;
 import at.fhtw.tourplanner.DTO.UserLoginRequestDTO;
 import at.fhtw.tourplanner.service.AuthService;
 import at.fhtw.tourplanner.util.ApiResponseUtil;
@@ -59,6 +62,25 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(ApiResponseUtil.success(null, "Logout successful"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponseUtil.ApiResponse<ForgotPasswordResponseDTO>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequestDTO dto) {
+
+        ForgotPasswordResponseDTO response = authService.forgotPassword(dto);
+        return ApiResponseUtil.success(
+                response,
+                "If an account exists for that email, a password reset link has been generated."
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponseUtil.ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequestDTO dto) {
+
+        authService.resetPassword(dto);
+        return ApiResponseUtil.success(null, "Password reset successfully");
     }
 
     @GetMapping("/me")

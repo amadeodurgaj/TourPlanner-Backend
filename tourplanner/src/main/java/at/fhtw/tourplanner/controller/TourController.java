@@ -2,6 +2,7 @@ package at.fhtw.tourplanner.controller;
 
 import at.fhtw.tourplanner.DTO.TourRequestDTO;
 import at.fhtw.tourplanner.DTO.TourResponseDTO;
+import at.fhtw.tourplanner.service.PdfService;
 import at.fhtw.tourplanner.service.TourService;
 import at.fhtw.tourplanner.util.ApiResponseUtil;
 import at.fhtw.tourplanner.util.CookieUtil;
@@ -9,7 +10,9 @@ import at.fhtw.tourplanner.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +31,9 @@ public class TourController {
 
     @Autowired
     private CookieUtil cookieUtil;
+
+    @Autowired
+    private PdfService pdfService;
 
     private UUID getUserIdFromJwt(HttpServletRequest request) {
         String jwt = cookieUtil.getJwtFromCookies(request);
@@ -106,5 +112,23 @@ public class TourController {
         }
 
         return ApiResponseUtil.success(null, "Tour deleted successfully");
+    }
+
+    @GetMapping("/{id}/report")
+    public ResponseEntity<?> downloadTourReport(@PathVariable UUID id, HttpServletRequest request) {
+        UUID userId = getUserIdFromJwt(request);
+        if (userId == null) {
+            return ApiResponseUtil.error("Unauthorized: Please log in to download tour reports", HttpStatus.UNAUTHORIZED);
+        }
+
+        byte[] pdfBytes = pdfService.generateTourReport(id, userId);
+        if (pdfBytes == null) {
+            return ApiResponseUtil.error("Tour not found or report generation failed. Please ensure the tour exists and try again.", HttpStatus.NOT_FOUND);
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"tour_report.pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 }

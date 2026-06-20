@@ -13,6 +13,7 @@ import at.fhtw.tourplanner.util.LoggerUtil;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -124,12 +125,14 @@ public class TourService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tour", tourId));
     }
 
+    @Transactional
     public boolean deleteTour(UUID tourId, UUID userId) {
         return tourRepository.findByIdAndUserId(tourId, userId)
                 .map(tour -> {
                     if (tour.getImagePath() != null) {
                         imageService.deleteImage(tour.getImagePath());
                     }
+                    tourLogRepository.deleteByTourId(tourId);
                     tourRepository.deleteById(tourId);
                     log.info("Tour deleted successfully: {} (ID: {})", tour.getName(), tourId);
                     return true;

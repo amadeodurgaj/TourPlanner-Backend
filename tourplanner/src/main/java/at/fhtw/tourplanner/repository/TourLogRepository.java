@@ -15,6 +15,7 @@ public interface TourLogRepository extends JpaRepository<TourLogEntity, UUID> {
     List<TourLogEntity> findByTourId(UUID tourId);
     Optional<TourLogEntity> findByIdAndTourId(UUID id, UUID tourId);
     long countByTourId(UUID tourId);
+    void deleteByTourId(UUID tourId);
     List<TourLogEntity> findByTourIdAndCommentContainingIgnoreCase(UUID tourId, String query);
 
     @Query("SELECT l FROM TourLogEntity l WHERE l.tour.id = :tourId AND " +

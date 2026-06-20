@@ -50,6 +50,7 @@ public class ImageService {
     
     public void deleteImage(String imagePath) {
         if (imagePath == null || imagePath.isEmpty()) {
+            log.warn("Attempted to delete image with null or empty path");
             return;
         }
         
@@ -60,9 +61,12 @@ public class ImageService {
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
                 log.info("Deleted image: {}", imagePath);
+            } else {
+                log.warn("Image file does not exist: {}", imagePath);
             }
         } catch (IOException e) {
-            log.error("Failed to delete image: {}", imagePath, e);
+            log.error("Failed to delete image: {}. Error: {}", imagePath, e.getMessage(), e);
+            throw new RuntimeException("Failed to delete image: " + imagePath + ". Error: " + e.getMessage(), e);
         }
     }
     
@@ -76,28 +80,32 @@ public class ImageService {
                             try {
                                 Files.delete(path);
                             } catch (IOException e) {
-                                log.error("Failed to delete: {}", path, e);
+                                log.error("Failed to delete file: {}. Error: {}", path, e.getMessage(), e);
+                                throw new RuntimeException("Failed to delete file: " + path + ". Error: " + e.getMessage(), e);
                             }
                         });
                 log.info("Deleted all images for tour: {}", tourId);
+            } else {
+                log.warn("Tour directory does not exist: tours/{}", tourId);
             }
         } catch (IOException e) {
-            log.error("Failed to delete images for tour: {}", tourId, e);
+            log.error("Failed to delete images for tour: {}. Error: {}", tourId, e.getMessage(), e);
+            throw new RuntimeException("Failed to delete images for tour: " + tourId + ". Error: " + e.getMessage(), e);
         }
     }
     
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty or null");
+            throw new IllegalArgumentException("File is empty or null. Please select a valid image file to upload.");
         }
         
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File size exceeds maximum of 5MB");
+            throw new IllegalArgumentException("File size exceeds maximum of 5MB. Please upload a smaller image file.");
         }
         
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new IllegalArgumentException("Invalid file type. Allowed: JPEG, PNG, WebP");
+            throw new IllegalArgumentException("Invalid file type. Allowed formats: JPEG, PNG, WebP. Please upload an image in one of these formats.");
         }
     }
     

@@ -3,7 +3,10 @@ package at.fhtw.tourplanner.service;
 import at.fhtw.tourplanner.DTO.TourRequestDTO;
 import at.fhtw.tourplanner.DTO.TourResponseDTO;
 import at.fhtw.tourplanner.entity.TourEntity;
+import at.fhtw.tourplanner.entity.TourLogEntity;
 import at.fhtw.tourplanner.entity.UserEntity;
+import at.fhtw.tourplanner.exception.ResourceNotFoundException;
+import at.fhtw.tourplanner.repository.TourLogRepository;
 import at.fhtw.tourplanner.repository.TourRepository;
 import at.fhtw.tourplanner.repository.UserRepository;
 import at.fhtw.tourplanner.util.LoggerUtil;
@@ -26,6 +29,9 @@ public class TourService {
     private TourRepository tourRepository;
 
     @Autowired
+    private TourLogRepository tourLogRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -35,7 +41,11 @@ public class TourService {
     private ImageService imageService;
 
     public List<TourResponseDTO> getAllToursByUser(UUID userId) {
-        return tourRepository.findByUserId(userId).stream()
+        List<TourEntity> tours = tourRepository.findByUserId(userId);
+        if (tours.isEmpty()) {
+            log.info("No tours found for user: {}", userId);
+        }
+        return tours.stream()
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -43,14 +53,12 @@ public class TourService {
     public TourResponseDTO getTourById(UUID tourId, UUID userId) {
         return tourRepository.findByIdAndUserId(tourId, userId)
                 .map(this::toResponseDTO)
-                .orElse(null);
+                .orElseThrow(() -> new ResourceNotFoundException("Tour", tourId));
     }
 
     public TourResponseDTO createTour(TourRequestDTO dto, UUID userId) {
-        UserEntity user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            return null;
-        }
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         TourEntity tour = new TourEntity();
         updateTourFromDTO(tour, dto);
@@ -70,10 +78,12 @@ public class TourService {
                 tour.setEstimatedTime(formatDuration(route.durationSeconds()));
             } catch (Exception e) {
                 log.error("Routing calculation failed for tour '{}': {}", dto.name(), e.getMessage());
+                log.warn("Created tour '{}' without route information due to routing service failure", dto.name());
             }
         }
 
         TourEntity saved = tourRepository.save(tour);
+        log.info("Tour created successfully: {} (ID: {})", dto.name(), saved.getId());
         return toResponseDTO(saved);
     }
 
@@ -102,13 +112,16 @@ public class TourService {
                             log.info("Recalculated route for tour '{}': {}km, transport: {}", dto.name(), distanceKm, dto.transportType());
                         } catch (Exception e) {
                             log.error("Failed to recalculate route for tour '{}': {}", dto.name(), e.getMessage());
+                            log.warn("Updated tour '{}' without route recalculation due to routing service failure", dto.name());
                         }
                     }
 
                     updateTourFromDTO(tour, dto);
-                    return toResponseDTO(tourRepository.save(tour));
+                    TourEntity updated = tourRepository.save(tour);
+                    log.info("Tour updated successfully: {} (ID: {})", dto.name(), tourId);
+                    return toResponseDTO(updated);
                 })
-                .orElse(null);
+                .orElseThrow(() -> new ResourceNotFoundException("Tour", tourId));
     }
 
     public boolean deleteTour(UUID tourId, UUID userId) {
@@ -118,9 +131,106 @@ public class TourService {
                         imageService.deleteImage(tour.getImagePath());
                     }
                     tourRepository.deleteById(tourId);
+                    log.info("Tour deleted successfully: {} (ID: {})", tour.getName(), tourId);
                     return true;
                 })
                 .orElse(false);
+    }
+
+    public List<TourResponseDTO> searchTours(UUID userId, String query) {
+        return tourRepository.searchByUserId(userId, query).stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    public void recalculateComputedAttributes(TourEntity tour) {
+        long logCount = tourLogRepository.countByTourId(tour.getId());
+        int popularity = (int) Math.min(logCount * 20, 100);
+        tour.setPopularityScore(popularity);
+
+        List<TourLogEntity> logs = tourLogRepository.findByTourId(tour.getId());
+        int childFriendliness = 0;
+        if (!logs.isEmpty()) {
+            double avgDifficulty = logs.stream()
+                    .mapToInt(l -> switch (l.getDifficulty()) {
+                        case EASY -> 1;
+                        case MEDIUM -> 3;
+                        case HARD -> 5;
+                    })
+                    .average()
+                    .orElse(3);
+            double avgTime = logs.stream().mapToInt(TourLogEntity::getTotalTime).average().orElse(0);
+            double avgDistance = logs.stream().mapToDouble(TourLogEntity::getTotalDistance).average().orElse(0);
+
+            double difficultyScore = Math.max(0, 100 - (avgDifficulty - 1) * 25);
+            double timeScore = avgTime < 60 ? 50 : avgTime < 180 ? 25 : 0;
+            double distanceScore = avgDistance < 10 ? 50 : avgDistance < 30 ? 25 : 0;
+
+            childFriendliness = (int) Math.round(difficultyScore * 0.5 + timeScore * 0.25 + distanceScore * 0.25);
+        }
+        tour.setChildFriendliness(childFriendliness);
+
+        tourRepository.save(tour);
+    }
+
+    public UserEntity getUserById(UUID userId) {
+        return userRepository.findById(userId).orElse(null);
+    }
+
+    public String exportTours(UUID userId) {
+        List<TourResponseDTO> tours = getAllToursByUser(userId);
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.findAndRegisterModules();
+            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tours);
+        } catch (Exception e) {
+            log.error("Failed to export tours: {}", e.getMessage());
+            throw new RuntimeException("Failed to export tours: " + e.getMessage(), e);
+        }
+    }
+
+    public int importTours(String jsonData, UserEntity user) {
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.findAndRegisterModules();
+            com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(jsonData);
+            int count = 0;
+
+            if (root.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode node : root) {
+                    TourRequestDTO dto = new TourRequestDTO(
+                            node.get("name").asText(),
+                            node.get("description").asText(),
+                            node.get("transportType").asText(),
+                            node.get("fromLocation").asText(),
+                            node.has("fromLatitude") ? node.get("fromLatitude").asDouble() : null,
+                            node.has("fromLongitude") ? node.get("fromLongitude").asDouble() : null,
+                            node.get("toLocation").asText(),
+                            node.has("toLatitude") ? node.get("toLatitude").asDouble() : null,
+                            node.has("toLongitude") ? node.get("toLongitude").asDouble() : null,
+                            node.has("distance") ? node.get("distance").asDouble() : 0.0,
+                            node.has("estimatedTime") && !node.get("estimatedTime").isNull() ? node.get("estimatedTime").asText() : null,
+                            node.has("routeInfo") && !node.get("routeInfo").isNull() ? mapper.convertValue(node.get("routeInfo"), Map.class) : null,
+                            node.has("imagePath") && !node.get("imagePath").isNull() ? node.get("imagePath").asText() : null
+                    );
+
+                    TourEntity tour = new TourEntity();
+                    updateTourFromDTO(tour, dto);
+                    tour.setUser(user);
+                    tour.setCreatedAt(LocalDateTime.now());
+                    tour.setUpdatedAt(LocalDateTime.now());
+
+                    tourRepository.save(tour);
+                    count++;
+                }
+            }
+
+            log.info("Imported {} tours for user {}", count, user.getUsername());
+            return count;
+        } catch (Exception e) {
+            log.error("Failed to import tours: {}", e.getMessage());
+            throw new RuntimeException("Failed to import tours: " + e.getMessage(), e);
+        }
     }
 
     @SuppressWarnings("unchecked")

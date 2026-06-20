@@ -41,10 +41,6 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String generateToken(String username) {
-        return generateToken(username, null);
-    }
-
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }

@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -16,28 +19,42 @@ public class ValidationExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        List<String> details = ex.getBindingResult().getFieldErrors().stream()
                 .sorted(Comparator.comparing(error -> error.getField()))
-                .map(error -> error.getField() + ": " + error.getDefaultMessage())
-                .collect(Collectors.joining("; "));
+                .map(error -> {
+                    String field = error.getField();
+                    String errorMessage = error.getDefaultMessage();
+                    fieldErrors.put(field, errorMessage);
+                    return field + ": " + errorMessage;
+                })
+                .collect(Collectors.toList());
 
-        if (message.isBlank()) {
-            message = "Validation failed";
+        String message = "Validation failed";
+        if (!details.isEmpty()) {
+            message = "Validation failed: " + String.join("; ", details);
         }
 
-        return ApiResponseUtil.error(message, HttpStatus.BAD_REQUEST);
+        return ApiResponseUtil.error(message, HttpStatus.BAD_REQUEST, fieldErrors);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleConstraintViolation(ConstraintViolationException ex) {
-        String message = ex.getConstraintViolations().stream()
-                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
-                .collect(Collectors.joining("; "));
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        List<String> details = ex.getConstraintViolations().stream()
+                .map(violation -> {
+                    String field = violation.getPropertyPath().toString();
+                    String errorMessage = violation.getMessage();
+                    fieldErrors.put(field, errorMessage);
+                    return field + ": " + errorMessage;
+                })
+                .collect(Collectors.toList());
 
-        if (message.isBlank()) {
-            message = "Validation failed";
+        String message = "Validation failed";
+        if (!details.isEmpty()) {
+            message = "Validation failed: " + String.join("; ", details);
         }
 
-        return ApiResponseUtil.error(message, HttpStatus.BAD_REQUEST);
+        return ApiResponseUtil.error(message, HttpStatus.BAD_REQUEST, fieldErrors);
     }
 }

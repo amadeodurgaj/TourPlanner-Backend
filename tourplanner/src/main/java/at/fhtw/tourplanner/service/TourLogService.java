@@ -4,8 +4,11 @@ import at.fhtw.tourplanner.DTO.TourLogRequestDTO;
 import at.fhtw.tourplanner.DTO.TourLogResponseDTO;
 import at.fhtw.tourplanner.entity.TourEntity;
 import at.fhtw.tourplanner.entity.TourLogEntity;
+import at.fhtw.tourplanner.exception.ResourceNotFoundException;
 import at.fhtw.tourplanner.repository.TourLogRepository;
 import at.fhtw.tourplanner.repository.TourRepository;
+import at.fhtw.tourplanner.util.LoggerUtil;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +20,16 @@ import java.util.stream.Collectors;
 @Service
 public class TourLogService {
 
+    private static final Logger logger = LoggerUtil.getLogger(TourLogService.class);
+
     @Autowired
     private TourLogRepository tourLogRepository;
 
     @Autowired
     private TourRepository tourRepository;
+
+    @Autowired
+    private TourService tourService;
 
     public List<TourLogResponseDTO> getLogsByTourId(UUID tourId) {
         return tourLogRepository.findByTourId(tourId).stream()
@@ -32,12 +40,12 @@ public class TourLogService {
     public TourLogResponseDTO getLogById(UUID logId, UUID tourId) {
         return tourLogRepository.findByIdAndTourId(logId, tourId)
                 .map(this::toResponseDTO)
-                .orElse(null);
+                .orElseThrow(() -> new ResourceNotFoundException("Tour Log", logId));
     }
 
     public TourLogResponseDTO createLog(TourLogRequestDTO dto, UUID tourId) {
-        TourEntity tour = tourRepository.findById(tourId).orElse(null);
-        if (tour == null) return null;
+        TourEntity tour = tourRepository.findById(tourId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tour", tourId));
 
         TourLogEntity log = new TourLogEntity();
         updateLogFromDTO(log, dto);
@@ -45,7 +53,10 @@ public class TourLogService {
         log.setCreatedAt(LocalDateTime.now());
         log.setUpdatedAt(LocalDateTime.now());
 
-        return toResponseDTO(tourLogRepository.save(log));
+        TourLogResponseDTO saved = toResponseDTO(tourLogRepository.save(log));
+        tourService.recalculateComputedAttributes(tour);
+        logger.info("Recalculated computed attributes for tour '{}' after adding log", tour.getName());
+        return saved;
     }
 
     public TourLogResponseDTO updateLog(UUID logId, TourLogRequestDTO dto, UUID tourId) {
@@ -53,17 +64,33 @@ public class TourLogService {
                 .map(log -> {
                     updateLogFromDTO(log, dto);
                     log.setUpdatedAt(LocalDateTime.now());
-                    return toResponseDTO(tourLogRepository.save(log));
+                    TourLogResponseDTO saved = toResponseDTO(tourLogRepository.save(log));
+                    tourRepository.findById(tourId).ifPresent(tourService::recalculateComputedAttributes);
+                    logger.info("Tour log updated successfully: {} (ID: {})", dto.comment(), logId);
+                    return saved;
                 })
-                .orElse(null);
+                .orElseThrow(() -> new ResourceNotFoundException("Tour Log", logId));
+    }
+
+    public List<TourLogResponseDTO> searchLogs(UUID tourId, String query) {
+        return tourLogRepository.searchByTourId(tourId, query).stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
     }
 
     public boolean deleteLog(UUID logId, UUID tourId) {
-        if (tourLogRepository.findByIdAndTourId(logId, tourId).isPresent()) {
-            tourLogRepository.deleteById(logId);
-            return true;
-        }
-        return false;
+        return tourRepository.findById(tourId)
+                .map(tour -> {
+                    if (tourLogRepository.findByIdAndTourId(logId, tourId).isPresent()) {
+                        tourLogRepository.deleteById(logId);
+                        tourService.recalculateComputedAttributes(tour);
+                        logger.info("Tour log deleted successfully: {} (ID: {}) from tour: {}", logId, tour.getName(), tourId);
+                        return true;
+                    }
+                    logger.warn("Tour log not found: {} for tour: {}", logId, tourId);
+                    throw new ResourceNotFoundException("Tour Log", logId);
+                })
+                .orElseThrow(() -> new ResourceNotFoundException("Tour", tourId));
     }
 
     private void updateLogFromDTO(TourLogEntity log, TourLogRequestDTO dto) {

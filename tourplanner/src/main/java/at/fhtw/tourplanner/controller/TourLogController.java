@@ -62,6 +62,22 @@ public class TourLogController {
         return ApiResponseUtil.success(logs, "Logs retrieved successfully");
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<?> searchLogs(
+            @PathVariable UUID tourId,
+            @RequestParam("q") String query,
+            HttpServletRequest request) {
+        var validationError = validateTourAccess(tourId, request);
+        if (validationError != null) return validationError;
+
+        if (query == null || query.trim().isEmpty()) {
+            return ApiResponseUtil.error("Query parameter 'q' is required and cannot be empty. Please provide a search term.", HttpStatus.BAD_REQUEST);
+        }
+
+        var results = tourLogService.searchLogs(tourId, query.trim());
+        return ApiResponseUtil.success(results, "Log search completed successfully");
+    }
+
     @GetMapping("/{logId}")
     public ResponseEntity<?> getLogById(@PathVariable UUID tourId, @PathVariable UUID logId, HttpServletRequest request) {
         var validationError = validateTourAccess(tourId, request);

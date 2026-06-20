@@ -7,8 +7,10 @@ import at.fhtw.tourplanner.service.TourService;
 import at.fhtw.tourplanner.util.ApiResponseUtil;
 import at.fhtw.tourplanner.util.CookieUtil;
 import at.fhtw.tourplanner.util.JwtUtil;
+import at.fhtw.tourplanner.util.LoggerUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/tours")
 public class TourController {
+
+    private static final Logger log = LoggerUtil.getLogger(TourController.class);
 
     @Autowired
     private TourService tourService;
@@ -84,8 +88,8 @@ public class TourController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTour(@PathVariable UUID id,
-                                       @Valid @RequestBody TourRequestDTO dto,
-                                       HttpServletRequest request) {
+                                        @Valid @RequestBody TourRequestDTO dto,
+                                        HttpServletRequest request) {
         UUID userId = getUserIdFromJwt(request);
         if (userId == null) {
             return ApiResponseUtil.error("Unauthorized", HttpStatus.UNAUTHORIZED);
@@ -112,6 +116,55 @@ public class TourController {
         }
 
         return ApiResponseUtil.success(null, "Tour deleted successfully");
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchTours(@RequestParam("q") String query, HttpServletRequest request) {
+        UUID userId = getUserIdFromJwt(request);
+        if (userId == null) {
+            return ApiResponseUtil.error("Unauthorized: Please log in to search tours", HttpStatus.UNAUTHORIZED);
+        }
+
+        if (query == null || query.trim().isEmpty()) {
+            return ApiResponseUtil.error("Query parameter 'q' is required and cannot be empty. Please provide a search term.", HttpStatus.BAD_REQUEST);
+        }
+
+        List<TourResponseDTO> results = tourService.searchTours(userId, query.trim());
+        return ApiResponseUtil.success(results, "Search completed successfully");
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<?> exportTours(HttpServletRequest request) {
+        UUID userId = getUserIdFromJwt(request);
+        if (userId == null) {
+            return ApiResponseUtil.error("Unauthorized", HttpStatus.UNAUTHORIZED);
+        }
+
+        String json = tourService.exportTours(userId);
+        if (json == null) {
+            return ApiResponseUtil.error("Failed to export tours", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=tours_export.json")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(json);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<?> importTours(@RequestBody String jsonData, HttpServletRequest request) {
+        UUID userId = getUserIdFromJwt(request);
+        if (userId == null) {
+            return ApiResponseUtil.error("Unauthorized: Please log in to import tours", HttpStatus.UNAUTHORIZED);
+        }
+
+        var user = tourService.getUserById(userId);
+        if (user == null) {
+            return ApiResponseUtil.error("User not found. Please ensure you are logged in with a valid account.", HttpStatus.NOT_FOUND);
+        }
+
+        int count = tourService.importTours(jsonData, user);
+        return ApiResponseUtil.success(count, "Imported " + count + " tours successfully");
     }
 
     @GetMapping("/{id}/report")

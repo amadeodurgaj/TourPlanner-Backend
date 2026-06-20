@@ -27,11 +27,10 @@ public class UserController {
 
         userService.registerUser(dto);
 
-
         UserRegisterResponseDTO response =
                 new UserRegisterResponseDTO(dto.username(), dto.email());
 
-        return ApiResponseUtil.success(response, "User registered successfully");
+        return ApiResponseUtil.success(response, "User registered successfully. You can now log in with your credentials.");
     }
 
 

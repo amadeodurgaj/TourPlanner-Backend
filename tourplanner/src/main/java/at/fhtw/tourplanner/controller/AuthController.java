@@ -64,12 +64,12 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@CookieValue(name = "jwt", required = false) String token) {
         if (token == null || token.isEmpty()) {
-            return ApiResponseUtil.error("Unauthorized", HttpStatus.UNAUTHORIZED);
+            return ApiResponseUtil.error("Unauthorized: No authentication token provided. Please log in.", HttpStatus.UNAUTHORIZED);
         }
 
         CurrentUserDTO userInfo = authService.getCurrentUser(token);
         if (userInfo == null) {
-            return ApiResponseUtil.error("Invalid token", HttpStatus.UNAUTHORIZED);
+            return ApiResponseUtil.error("Invalid token: The provided authentication token is invalid or expired. Please log in again.", HttpStatus.UNAUTHORIZED);
         }
 
         return ApiResponseUtil.success(userInfo, "User info retrieved successfully");

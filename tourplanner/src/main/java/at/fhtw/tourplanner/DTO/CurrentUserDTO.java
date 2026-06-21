@@ -2,5 +2,14 @@ package at.fhtw.tourplanner.DTO;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record CurrentUserDTO (@NotBlank String username, @NotBlank String token) {
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+public record CurrentUserDTO (
+        @NotBlank UUID id,
+        @NotBlank String username,
+        @NotBlank String email,
+        LocalDateTime registrationDate,
+        @NotBlank String token
+) {
 }

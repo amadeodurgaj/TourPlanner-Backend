@@ -2,6 +2,7 @@ package at.fhtw.tourplanner.util;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,18 @@ public class JwtUtil {
     @Value("${app.jwt.expiration}")
     private long expiration;
 
+    @PostConstruct
+    public void validateSecret() {
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "app.jwt.secret must be at least 256 bits (32 bytes) long. " +
+                    "Current length: " + keyBytes.length + " bytes. " +
+                    "Please update your application properties with a longer secret."
+            );
+        }
+    }
+
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
@@ -36,7 +49,7 @@ public class JwtUtil {
                 .setClaims(claims)
                 .setSubject(username)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiration * 1000))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey())
                 .compact();
     }

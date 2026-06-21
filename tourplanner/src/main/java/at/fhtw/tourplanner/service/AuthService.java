@@ -10,7 +10,6 @@ import at.fhtw.tourplanner.repository.UserRepository;
 import at.fhtw.tourplanner.util.JwtUtil;
 import at.fhtw.tourplanner.util.LoggerUtil;
 import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -33,21 +32,21 @@ public class AuthService {
     private static final Logger log = LoggerUtil.getLogger(AuthService.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    @Autowired
-    UserRepository userRepository;
-
-    @Autowired
-    BCryptPasswordEncoder passwordEncoder;
-
-
-    @Autowired
-    JwtUtil jwtUtil;
+    private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
     @Value("${app.frontend.url}")
     private List<String> frontendUrls;
 
     @Value("${app.password-reset.expiration-minutes:30}")
     private long passwordResetExpirationMinutes;
+
+    public AuthService(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+    }
 
     public String loginUser(UserLoginRequestDTO dto) {
         UserEntity user = userRepository.findByUsername(dto.username());
@@ -112,7 +111,7 @@ public class AuthService {
             log.warn("Current user not found for token username: {}", username);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found for the provided token");
         }
-        return new CurrentUserDTO(user.getUsername(), token);
+        return new CurrentUserDTO(user.getId(), user.getUsername(), user.getEmail(), user.getRegistrationDate(), token);
     }
 
     private String generateResetToken() {

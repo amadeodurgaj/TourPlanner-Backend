@@ -1,16 +1,15 @@
 package at.fhtw.tourplanner.exception;
 
-import at.fhtw.tourplanner.util.ApiResponseUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.util.List;
-import java.util.Map;
+import java.time.Instant;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -18,42 +17,77 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleResponseStatusException(ResponseStatusException ex) {
+    public ProblemDetail handleResponseStatusException(ResponseStatusException ex) {
         log.warn("ResponseStatusException: {} - {}", ex.getStatusCode(), ex.getReason());
-        return ApiResponseUtil.error(ex.getReason(), HttpStatus.valueOf(ex.getStatusCode().value()));
+        ProblemDetail detail = ProblemDetail.forStatus(ex.getStatusCode());
+        detail.setTitle("Request Error");
+        detail.setDetail(ex.getReason() != null ? ex.getReason() : "Bad request");
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFoundException(NoResourceFoundException ex) {
+        ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        detail.setTitle("Endpoint Not Found");
+        detail.setDetail(ex.getMessage());
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
     }
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleBusinessException(BusinessException ex) {
+    public ProblemDetail handleBusinessException(BusinessException ex) {
         log.warn("BusinessException: {} - {}", ex.getErrorCode(), ex.getMessage());
+        ProblemDetail detail = ProblemDetail.forStatus(ex.getHttpStatus());
+        detail.setTitle("Business Error");
+        detail.setDetail(ex.getMessage());
+        detail.setProperty("errorCode", ex.getErrorCode());
+        detail.setProperty("timestamp", Instant.now());
         if (ex.getDetails() != null && !ex.getDetails().isEmpty()) {
-            return ApiResponseUtil.error(ex.getMessage(), ex.getHttpStatus(), ex.getDetails());
+            detail.setProperty("details", ex.getDetails());
         }
-        return ApiResponseUtil.error(ex.getMessage(), ex.getHttpStatus());
+        return detail;
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleResourceNotFoundException(ResourceNotFoundException ex) {
+    public ProblemDetail handleResourceNotFoundException(ResourceNotFoundException ex) {
         log.warn("ResourceNotFoundException: {} with id '{}'", ex.getResourceType(), ex.getResourceId());
-        String message = String.format("%s with id '%s' not found", ex.getResourceType(), ex.getResourceId());
-        return ApiResponseUtil.error(message, HttpStatus.NOT_FOUND);
+        ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        detail.setTitle("Resource Not Found");
+        detail.setDetail(String.format("%s with id '%s' not found", ex.getResourceType(), ex.getResourceId()));
+        detail.setProperty("resourceType", ex.getResourceType());
+        detail.setProperty("resourceId", ex.getResourceId());
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleIllegalArgumentException(IllegalArgumentException ex) {
+    public ProblemDetail handleIllegalArgumentException(IllegalArgumentException ex) {
         log.warn("IllegalArgumentException: {}", ex.getMessage());
-        return ApiResponseUtil.error(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        detail.setTitle("Validation Error");
+        detail.setDetail(ex.getMessage());
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
     }
 
     @ExceptionHandler(SecurityException.class)
-    public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleSecurityException(SecurityException ex) {
+    public ProblemDetail handleSecurityException(SecurityException ex) {
         log.warn("SecurityException: {}", ex.getMessage());
-        return ApiResponseUtil.error("Access denied: " + ex.getMessage(), HttpStatus.FORBIDDEN);
+        ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        detail.setTitle("Access Denied");
+        detail.setDetail("Access denied: " + ex.getMessage());
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponseUtil.ApiResponse<Object>> handleGenericException(Exception ex) {
+    public ProblemDetail handleGenericException(Exception ex) {
         log.error("Unexpected error: {}", ex.getMessage(), ex);
-        return ApiResponseUtil.error("An unexpected error occurred. Please try again later.", HttpStatus.INTERNAL_SERVER_ERROR);
+        ProblemDetail detail = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        detail.setTitle("Internal Server Error");
+        detail.setDetail("An unexpected error occurred. Please try again later.");
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
     }
 }

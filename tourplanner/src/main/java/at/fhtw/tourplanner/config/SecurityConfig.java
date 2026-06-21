@@ -83,11 +83,15 @@ public class SecurityConfig {
         return request -> {
             String origin = ((HttpServletRequest) request).getHeader("Origin");
             CorsConfiguration config = new CorsConfiguration();
-            if (origin != null && frontendUrl.contains(origin)) {
-                config.setAllowedOrigins(List.of(origin));
+            if (origin != null && !origin.isBlank()) {
+                if (frontendUrl != null && frontendUrl.contains(origin.trim())) {
+                    config.setAllowedOrigins(List.of(origin.trim()));
+                } else {
+                    config.addAllowedOriginPattern(origin.trim());
+                }
             }
             config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-            config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+            config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "X-XSRF-TOKEN"));
             config.setAllowCredentials(true);
             config.setMaxAge(3600L);
             return config;
@@ -107,7 +111,17 @@ public class SecurityConfig {
         @Override
         public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
                 throws IOException, ServletException {
+            HttpServletRequest httpRequest = (HttpServletRequest) request;
             HttpServletResponse httpResponse = (HttpServletResponse) response;
+
+            String origin = httpRequest.getHeader("Origin");
+            if (origin != null && !origin.isBlank()) {
+                httpResponse.setHeader("Access-Control-Allow-Origin", origin);
+                httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+                httpResponse.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Requested-With, X-XSRF-TOKEN");
+                httpResponse.setHeader("Access-Control-Allow-Credentials", "true");
+                httpResponse.setHeader("Access-Control-Max-Age", "3600");
+            }
 
             httpResponse.setHeader("X-Content-Type-Options", "nosniff");
             httpResponse.setHeader("X-Frame-Options", "DENY");

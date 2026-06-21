@@ -41,7 +41,7 @@ public class AuthController {
                 .secure(isProduction)
                 .path("/")
                 .maxAge(60 * 60)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
 
         CurrentUserDTO userInfo = authService.getCurrentUser(token);
@@ -59,7 +59,7 @@ public class AuthController {
                 .secure(isProduction)
                 .path("/")
                 .maxAge(0)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
 
         return ResponseEntity.ok()

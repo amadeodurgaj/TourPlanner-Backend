@@ -7,6 +7,8 @@ import at.fhtw.tourplanner.DTO.ResetPasswordRequestDTO;
 import at.fhtw.tourplanner.DTO.UserLoginRequestDTO;
 import at.fhtw.tourplanner.service.AuthService;
 import at.fhtw.tourplanner.util.ApiResponseUtil;
+import at.fhtw.tourplanner.util.CookieUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +25,9 @@ public class AuthController {
     @Autowired
     AuthService authService;
 
+    @Autowired
+    CookieUtil cookieUtil;
+
     @Value("${app.environment.production:false}")
     private boolean isProduction;
 
@@ -30,11 +35,8 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody UserLoginRequestDTO dto) {
         String token = authService.loginUser(dto);
 
-        if (token == null) {
-            return ApiResponseUtil.error("Invalid username or password", HttpStatus.UNAUTHORIZED);
-        }
-
-        ResponseCookie cookie = ResponseCookie.from("jwt", token)
+        String cookieName = isProduction ? "__Host-jwt" : "jwt";
+        ResponseCookie cookie = ResponseCookie.from(cookieName, token)
                 .httpOnly(true)
                 .secure(isProduction)
                 .path("/")
@@ -51,7 +53,8 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
-        ResponseCookie cookie = ResponseCookie.from("jwt", "")
+        String cookieName = isProduction ? "__Host-jwt" : "jwt";
+        ResponseCookie cookie = ResponseCookie.from(cookieName, "")
                 .httpOnly(true)
                 .secure(isProduction)
                 .path("/")
@@ -84,7 +87,8 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@CookieValue(name = "jwt", required = false) String token) {
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        String token = cookieUtil.getJwtFromCookies(request);
         if (token == null || token.isEmpty()) {
             return ApiResponseUtil.error("Unauthorized: No authentication token provided. Please log in.", HttpStatus.UNAUTHORIZED);
         }

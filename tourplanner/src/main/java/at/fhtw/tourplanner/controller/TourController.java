@@ -3,6 +3,7 @@ package at.fhtw.tourplanner.controller;
 import at.fhtw.tourplanner.DTO.TourRequestDTO;
 import at.fhtw.tourplanner.DTO.TourResponseDTO;
 import at.fhtw.tourplanner.service.PdfService;
+import at.fhtw.tourplanner.service.TourImportExportService;
 import at.fhtw.tourplanner.service.TourService;
 import at.fhtw.tourplanner.util.ApiResponseUtil;
 import at.fhtw.tourplanner.util.CookieUtil;
@@ -11,7 +12,6 @@ import at.fhtw.tourplanner.util.LoggerUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,17 +27,20 @@ public class TourController {
 
     private static final Logger log = LoggerUtil.getLogger(TourController.class);
 
-    @Autowired
-    private TourService tourService;
+    private final TourService tourService;
+    private final TourImportExportService tourImportExportService;
+    private final JwtUtil jwtUtil;
+    private final CookieUtil cookieUtil;
+    private final PdfService pdfService;
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private CookieUtil cookieUtil;
-
-    @Autowired
-    private PdfService pdfService;
+    public TourController(TourService tourService, TourImportExportService tourImportExportService,
+                          JwtUtil jwtUtil, CookieUtil cookieUtil, PdfService pdfService) {
+        this.tourService = tourService;
+        this.tourImportExportService = tourImportExportService;
+        this.jwtUtil = jwtUtil;
+        this.cookieUtil = cookieUtil;
+        this.pdfService = pdfService;
+    }
 
     private UUID getUserIdFromJwt(HttpServletRequest request) {
         String jwt = cookieUtil.getJwtFromCookies(request);
@@ -140,7 +143,7 @@ public class TourController {
             return ApiResponseUtil.error("Unauthorized", HttpStatus.UNAUTHORIZED);
         }
 
-        String json = tourService.exportTours(userId);
+        String json = tourImportExportService.exportTours(userId);
         if (json == null) {
             return ApiResponseUtil.error("Failed to export tours", HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -158,12 +161,7 @@ public class TourController {
             return ApiResponseUtil.error("Unauthorized: Please log in to import tours", HttpStatus.UNAUTHORIZED);
         }
 
-        var user = tourService.getUserById(userId);
-        if (user == null) {
-            return ApiResponseUtil.error("User not found. Please ensure you are logged in with a valid account.", HttpStatus.NOT_FOUND);
-        }
-
-        int count = tourService.importTours(jsonData, user);
+        int count = tourImportExportService.importTours(jsonData, userId);
         return ApiResponseUtil.success(count, "Imported " + count + " tours successfully");
     }
 

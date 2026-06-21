@@ -11,7 +11,6 @@ import at.fhtw.tourplanner.repository.TourRepository;
 import at.fhtw.tourplanner.repository.UserRepository;
 import at.fhtw.tourplanner.util.LoggerUtil;
 import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,20 +25,21 @@ public class TourService {
 
     private static final Logger log = LoggerUtil.getLogger(TourService.class);
 
-    @Autowired
-    private TourRepository tourRepository;
+    private final TourRepository tourRepository;
+    private final TourLogRepository tourLogRepository;
+    private final UserRepository userRepository;
+    private final RoutingService routingService;
+    private final ImageService imageService;
 
-    @Autowired
-    private TourLogRepository tourLogRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private RoutingService routingService;
-
-    @Autowired
-    private ImageService imageService;
+    public TourService(TourRepository tourRepository, TourLogRepository tourLogRepository,
+                       UserRepository userRepository, RoutingService routingService,
+                       ImageService imageService) {
+        this.tourRepository = tourRepository;
+        this.tourLogRepository = tourLogRepository;
+        this.userRepository = userRepository;
+        this.routingService = routingService;
+        this.imageService = imageService;
+    }
 
     public List<TourResponseDTO> getAllToursByUser(UUID userId) {
         List<TourEntity> tours = tourRepository.findByUserId(userId);
@@ -113,7 +113,9 @@ public class TourService {
                             log.info("Recalculated route for tour '{}': {}km, transport: {}", dto.name(), distanceKm, dto.transportType());
                         } catch (Exception e) {
                             log.error("Failed to recalculate route for tour '{}': {}", dto.name(), e.getMessage());
-                            log.warn("Updated tour '{}' without route recalculation due to routing service failure", dto.name());
+                            tour.setDistance(0);
+                            tour.setEstimatedTime("0 min");
+                            log.warn("Updated tour '{}' with fallback values due to routing service failure", dto.name());
                         }
                     }
 
@@ -129,8 +131,13 @@ public class TourService {
     public boolean deleteTour(UUID tourId, UUID userId) {
         return tourRepository.findByIdAndUserId(tourId, userId)
                 .map(tour -> {
-                    if (tour.getImagePath() != null) {
-                        imageService.deleteImage(tour.getImagePath());
+                    try {
+                        if (tour.getImagePath() != null) {
+                            imageService.deleteImage(tour.getImagePath());
+                        }
+                        imageService.deleteTourImages(tourId);
+                    } catch (Exception e) {
+                        log.warn("Failed to delete image files for tour '{}': {}", tourId, e.getMessage());
                     }
                     tourLogRepository.deleteByTourId(tourId);
                     tourRepository.deleteById(tourId);
@@ -174,66 +181,6 @@ public class TourService {
         tour.setChildFriendliness(childFriendliness);
 
         tourRepository.save(tour);
-    }
-
-    public UserEntity getUserById(UUID userId) {
-        return userRepository.findById(userId).orElse(null);
-    }
-
-    public String exportTours(UUID userId) {
-        List<TourResponseDTO> tours = getAllToursByUser(userId);
-        try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            mapper.findAndRegisterModules();
-            return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tours);
-        } catch (Exception e) {
-            log.error("Failed to export tours: {}", e.getMessage());
-            throw new RuntimeException("Failed to export tours: " + e.getMessage(), e);
-        }
-    }
-
-    public int importTours(String jsonData, UserEntity user) {
-        try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            mapper.findAndRegisterModules();
-            com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(jsonData);
-            int count = 0;
-
-            if (root.isArray()) {
-                for (com.fasterxml.jackson.databind.JsonNode node : root) {
-                    TourRequestDTO dto = new TourRequestDTO(
-                            node.get("name").asText(),
-                            node.get("description").asText(),
-                            node.get("transportType").asText(),
-                            node.get("fromLocation").asText(),
-                            node.has("fromLatitude") ? node.get("fromLatitude").asDouble() : null,
-                            node.has("fromLongitude") ? node.get("fromLongitude").asDouble() : null,
-                            node.get("toLocation").asText(),
-                            node.has("toLatitude") ? node.get("toLatitude").asDouble() : null,
-                            node.has("toLongitude") ? node.get("toLongitude").asDouble() : null,
-                            node.has("distance") ? node.get("distance").asDouble() : 0.0,
-                            node.has("estimatedTime") && !node.get("estimatedTime").isNull() ? node.get("estimatedTime").asText() : null,
-                            node.has("routeInfo") && !node.get("routeInfo").isNull() ? mapper.convertValue(node.get("routeInfo"), Map.class) : null,
-                            node.has("imagePath") && !node.get("imagePath").isNull() ? node.get("imagePath").asText() : null
-                    );
-
-                    TourEntity tour = new TourEntity();
-                    updateTourFromDTO(tour, dto);
-                    tour.setUser(user);
-                    tour.setCreatedAt(LocalDateTime.now());
-                    tour.setUpdatedAt(LocalDateTime.now());
-
-                    tourRepository.save(tour);
-                    count++;
-                }
-            }
-
-            log.info("Imported {} tours for user {}", count, user.getUsername());
-            return count;
-        } catch (Exception e) {
-            log.error("Failed to import tours: {}", e.getMessage());
-            throw new RuntimeException("Failed to import tours: " + e.getMessage(), e);
-        }
     }
 
     @SuppressWarnings("unchecked")

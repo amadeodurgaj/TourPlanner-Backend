@@ -7,8 +7,11 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.concurrent.CompletableFuture;
 
 import java.util.Map;
 
@@ -33,6 +36,11 @@ public class RoutingService {
             "running", "foot-walking",
             "car", "driving-car"
     );
+
+    @Async
+    public CompletableFuture<RouteInfo> calculateRouteAsync(double fromLat, double fromLng, double toLat, double toLng, String transportType) {
+        return CompletableFuture.completedFuture(calculateRoute(fromLat, fromLng, toLat, toLng, transportType));
+    }
 
     public RouteInfo calculateRoute(double fromLat, double fromLng, double toLat, double toLng, String transportType) {
         String orsProfile = TRANSPORT_TYPE_MAP.getOrDefault(transportType, "foot-walking");

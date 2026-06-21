@@ -11,7 +11,6 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import java.awt.Color;
 import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -26,11 +25,13 @@ public class PdfService {
 
     private static final Logger log = LoggerUtil.getLogger(PdfService.class);
 
-    @Autowired
-    private TourRepository tourRepository;
+    private final TourRepository tourRepository;
+    private final TourLogRepository tourLogRepository;
 
-    @Autowired
-    private TourLogRepository tourLogRepository;
+    public PdfService(TourRepository tourRepository, TourLogRepository tourLogRepository) {
+        this.tourRepository = tourRepository;
+        this.tourLogRepository = tourLogRepository;
+    }
 
     public byte[] generateTourReport(UUID tourId, UUID userId) {
         TourEntity tour = tourRepository.findByIdAndUserId(tourId, userId).orElse(null);

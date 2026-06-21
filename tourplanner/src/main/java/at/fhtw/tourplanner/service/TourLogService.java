@@ -9,7 +9,6 @@ import at.fhtw.tourplanner.repository.TourLogRepository;
 import at.fhtw.tourplanner.repository.TourRepository;
 import at.fhtw.tourplanner.util.LoggerUtil;
 import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,14 +21,16 @@ public class TourLogService {
 
     private static final Logger logger = LoggerUtil.getLogger(TourLogService.class);
 
-    @Autowired
-    private TourLogRepository tourLogRepository;
+    private final TourLogRepository tourLogRepository;
+    private final TourRepository tourRepository;
+    private final TourService tourService;
 
-    @Autowired
-    private TourRepository tourRepository;
-
-    @Autowired
-    private TourService tourService;
+    public TourLogService(TourLogRepository tourLogRepository, TourRepository tourRepository,
+                          TourService tourService) {
+        this.tourLogRepository = tourLogRepository;
+        this.tourRepository = tourRepository;
+        this.tourService = tourService;
+    }
 
     public List<TourLogResponseDTO> getLogsByTourId(UUID tourId) {
         return tourLogRepository.findByTourId(tourId).stream()

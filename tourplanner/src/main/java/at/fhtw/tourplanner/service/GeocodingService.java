@@ -4,9 +4,12 @@ import at.fhtw.tourplanner.DTO.LocationSearchResultDTO;
 import at.fhtw.tourplanner.util.LoggerUtil;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,13 +27,15 @@ public class GeocodingService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    @Cacheable(value = "geocoding", key = "#query")
     public List<LocationSearchResultDTO> search(String query) {
         if (query == null || query.trim().isEmpty()) {
             return List.of();
         }
 
         try {
-            String url = baseUrl + "/geocode/search?text=" + query.trim() + "&size=5&lang=en";
+            String encodedQuery = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8);
+            String url = baseUrl + "/geocode/search?text=" + encodedQuery + "&size=5&lang=en";
 
             var headers = new org.springframework.http.HttpHeaders();
             headers.set("Authorization", apiKey);

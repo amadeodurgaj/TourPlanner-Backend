@@ -1,14 +1,15 @@
 package at.fhtw.tourplanner.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "tour_logs")          // explicit table name like TourEntity
+@Table(name = "tour_logs", indexes = {
+    @Index(name = "idx_tourlog_tour_comment", columnList = "tour_id, comment")
+})
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -20,42 +21,29 @@ public class TourLogEntity {
     }
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)  // UUID like TourEntity, not Long
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @NotNull
     private LocalDateTime dateTime;
 
-    @NotBlank
-    @Size(max = 5000)
     @Column(nullable = false, length = 5000)
     private String comment;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)     // you were missing this!
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Difficulty difficulty;
 
-    @NotNull
-    @PositiveOrZero
     private Double totalDistance;
 
-    @NotNull
-    @PositiveOrZero
-    private Integer totalTime;       // minutes is simpler, Duration has DB mapping issues
+    private Integer totalTime;
 
-    @NotNull
-    @Min(1)
-    @Max(5)
     private Integer rating;
 
-    @ManyToOne(fetch = FetchType.LAZY)   // add LAZY like TourEntity
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tour_id", nullable = false)
     private TourEntity tour;
 
-    @NotNull
     private LocalDateTime createdAt;
 
-    @NotNull
     private LocalDateTime updatedAt;
 }

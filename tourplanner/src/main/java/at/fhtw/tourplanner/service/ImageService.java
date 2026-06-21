@@ -42,7 +42,7 @@ public class ImageService {
         Path filePath = tourDir.resolve(fileName);
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
         
-        String relativePath = "/uploads/tours/" + tourId + "/" + fileName;
+        String relativePath = "/" + uploadDir + "/tours/" + tourId + "/" + fileName;
         log.info("Saved image: {} for tour: {}", relativePath, tourId);
         
         return relativePath;
@@ -71,23 +71,22 @@ public class ImageService {
     }
     
     public void deleteTourImages(UUID tourId) {
-        try {
-            Path tourDir = Paths.get(uploadDir, "tours", tourId.toString());
-            if (Files.exists(tourDir)) {
-                Files.walk(tourDir)
-                        .sorted((a, b) -> -a.compareTo(b))
-                        .forEach(path -> {
-                            try {
-                                Files.delete(path);
-                            } catch (IOException e) {
-                                log.error("Failed to delete file: {}. Error: {}", path, e.getMessage(), e);
-                                throw new RuntimeException("Failed to delete file: " + path + ". Error: " + e.getMessage(), e);
-                            }
-                        });
-                log.info("Deleted all images for tour: {}", tourId);
-            } else {
-                log.warn("Tour directory does not exist: tours/{}", tourId);
-            }
+        Path tourDir = Paths.get(uploadDir, "tours", tourId.toString());
+        if (!Files.exists(tourDir)) {
+            log.warn("Tour directory does not exist: tours/{}", tourId);
+            return;
+        }
+        try (var walk = Files.walk(tourDir)) {
+            walk.sorted((a, b) -> -a.compareTo(b))
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                        } catch (IOException e) {
+                            log.error("Failed to delete file: {}. Error: {}", path, e.getMessage(), e);
+                            throw new RuntimeException("Failed to delete file: " + path + ". Error: " + e.getMessage(), e);
+                        }
+                    });
+            log.info("Deleted all images for tour: {}", tourId);
         } catch (IOException e) {
             log.error("Failed to delete images for tour: {}. Error: {}", tourId, e.getMessage(), e);
             throw new RuntimeException("Failed to delete images for tour: " + tourId + ". Error: " + e.getMessage(), e);

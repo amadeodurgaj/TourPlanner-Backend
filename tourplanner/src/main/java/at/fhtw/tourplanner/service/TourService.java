@@ -77,6 +77,9 @@ public class TourService {
                 double distanceKm = route.distanceMeters() / 1000.0;
                 tour.setDistance(distanceKm);
                 tour.setEstimatedTime(formatDuration(route.durationSeconds()));
+                if (route.geometry() != null) {
+                    tour.setRouteInfo(Map.of("geometry", route.geometry()));
+                }
             } catch (Exception e) {
                 log.error("Routing calculation failed for tour '{}': {}", dto.name(), e.getMessage());
                 log.warn("Created tour '{}' without route information due to routing service failure", dto.name());
@@ -110,6 +113,9 @@ public class TourService {
                             double distanceKm = route.distanceMeters() / 1000.0;
                             tour.setDistance(distanceKm);
                             tour.setEstimatedTime(formatDuration(route.durationSeconds()));
+                            if (route.geometry() != null) {
+                                tour.setRouteInfo(Map.of("geometry", route.geometry()));
+                            }
                             log.info("Recalculated route for tour '{}': {}km, transport: {}", dto.name(), distanceKm, dto.transportType());
                         } catch (Exception e) {
                             log.error("Failed to recalculate route for tour '{}': {}", dto.name(), e.getMessage());

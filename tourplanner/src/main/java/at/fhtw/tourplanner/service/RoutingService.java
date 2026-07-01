@@ -28,7 +28,7 @@ public class RoutingService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public record RouteInfo(double distanceMeters, long durationSeconds) {}
+    public record RouteInfo(double distanceMeters, long durationSeconds, String geometry) {}
 
     private static final Map<String, String> TRANSPORT_TYPE_MAP = Map.of(
             "foot", "foot-walking",
@@ -65,7 +65,7 @@ public class RoutingService {
 
             if (response.getBody() == null) {
                 log.warn("Empty response from OpenRouteService");
-                return new RouteInfo(0, 0);
+                return new RouteInfo(0, 0, null);
             }
 
             Map<String, Object> body = response.getBody();
@@ -93,17 +93,19 @@ public class RoutingService {
                         }
                     }
 
+                    String geometry = (String) route.get("geometry");
+
                     log.info("Route calculated: {}m, {}s", distance, duration);
-                    return new RouteInfo(distance, duration);
+                    return new RouteInfo(distance, duration, geometry);
                 }
             }
 
             log.warn("No routes found in OpenRouteService response");
-            return new RouteInfo(0, 0);
+            return new RouteInfo(0, 0, null);
 
         } catch (Exception e) {
             log.error("Routing error: {}", e.getMessage(), e);
-            return new RouteInfo(0, 0);
+            return new RouteInfo(0, 0, null);
         }
     }
 }

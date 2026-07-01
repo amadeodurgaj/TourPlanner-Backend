@@ -64,7 +64,8 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/forgot-password",
                                 "/api/auth/reset-password",
-                                "/api/register"
+                                "/api/register",
+                                "/api/admin/migrate-geometry"
                         ).permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().authenticated()
